@@ -3,12 +3,14 @@ import sys
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 
-from doggos.fuzzy_sets import Type1FuzzySet
+from doggos.fuzzy_sets import Type1FuzzySet, IntervalType2FuzzySet
 from doggos.induction import FuzzyDecisionTableGenerator
 from doggos.induction.rule_induction_WIP.inconsistencies_remover import InconsistenciesRemover
 from doggos.induction.rule_induction_WIP.reductor import Reductor
 from doggos.induction.rule_induction_WIP.rule_builder import RuleBuilder
-from doggos.utils.membership_functions.membership_functions import generate_equal_gausses
+from doggos.knowledge import LinguisticVariable, Domain, Rule, fuzzify
+from doggos.knowledge.consequents import TakagiSugenoConsequent
+from doggos.utils.membership_functions.membership_functions import generate_equal_gausses, gaussian
 
 sys.path.append((path.abspath('../biblioteka/DoggOSFuzzy/doggos')))
 
@@ -43,9 +45,31 @@ reductor = Reductor(decision_table, True)
 decision_table_with_reduct, features_number_after_reduct = reductor.worker(decision_table)
 print(decision_table_with_reduct)
 
+
+gausses_LMF = [gaussian(.0, .20), gaussian(.5, .20), gaussian(1., .20)]
+gausses_UMF = [gaussian(.0, .22), gaussian(.5, .22), gaussian(1., .22)]
+
+small_T2 = IntervalType2FuzzySet(gausses_LMF[0], gausses_UMF[0])
+medium_T2 = IntervalType2FuzzySet(gausses_LMF[0], gausses_UMF[0])
+large_T2 = IntervalType2FuzzySet(gausses_LMF[0], gausses_UMF[0])
+
+fuzzy_sets_T2 = {'small': small, 'medium': medium, 'large': large}
 #induce rules
 rb = RuleBuilder(decision_table_with_reduct)
-rules = rb.induce_rules()
-print(rules)
+antecedents= rb.induce_rules(fuzzy_sets_T2)
+print(antecedents)
+
+decision = LinguisticVariable('Decision', Domain(0, 1, 0.001))
+ling_vars = RuleBuilder.features
+
+parameters_1 = {ling_vars[0]: 0.25, RuleBuilder.features[1]: 0.25, RuleBuilder.features[2]: 0.5, RuleBuilder.features[3]: 0.5}
+parameters_2 = {RuleBuilder.features[0]: 0.75, RuleBuilder.features[1]: 0.65, RuleBuilder.features[2]: 0.85, RuleBuilder.features[3]: 0.55}
+consequent_1 = TakagiSugenoConsequent(parameters_1, 0, decision)
+consequent_2 = TakagiSugenoConsequent(parameters_2, 0, decision)
+
+rules = [Rule(antecedents["0.0"], consequent_1), Rule(antecedents["1.0"], consequent_2)]
+
+clauses = rb.return_clauses(fuzzy_sets_T2)
+df_fuzzified = fuzzify(df, clauses)
 
 #map string rules to fuzzy rules with type-2 fuzzy sets
