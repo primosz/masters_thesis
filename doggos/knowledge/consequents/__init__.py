@@ -1,0 +1,2 @@
+from doggos.knowledge.consequents.mamdani_consequent import MamdaniConsequent
+from doggos.knowledge.consequents.takagi_sugeno_consequent import TakagiSugenoConsequent

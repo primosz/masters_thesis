@@ -1,0 +1,2 @@
+from doggos.algebras.lukasiewicz_algebra import LukasiewiczAlgebra
+from doggos.algebras.godel_algebra import GodelAlgebra

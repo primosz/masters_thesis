@@ -1,0 +1,2 @@
+from doggos.inference.mamdani_inference_system import MamdaniInferenceSystem
+from doggos.inference.takagi_sugeno_inference_system import TakagiSugenoInferenceSystem

@@ -1,0 +1,4 @@
+from doggos.fuzzy_sets.type1_fuzzy_set import Type1FuzzySet
+from doggos.fuzzy_sets.type2_fuzzy_set import Type2FuzzySet
+from doggos.fuzzy_sets.interval_type2_fuzzy_set import IntervalType2FuzzySet
+from doggos.fuzzy_sets.fuzzy_set import MembershipDegree
