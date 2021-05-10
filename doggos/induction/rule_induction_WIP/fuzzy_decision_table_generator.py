@@ -6,7 +6,7 @@ from doggos.knowledge import Clause, LinguisticVariable, Domain
 
 class FuzzyDecisionTableGenerator:
 
-    def __init__(self, fuzzy_sets: Dict[str, Type1FuzzySet], dataset: pd.DataFrame):
+    def __init__(self, fuzzy_sets: Dict[str, Dict], dataset: pd.DataFrame):
         self.__fuzzy_sets = fuzzy_sets
         self.__dataset = dataset
         self.__features = []
@@ -25,9 +25,11 @@ class FuzzyDecisionTableGenerator:
 
     def fuzzify(self):
         for feature in self.__features:
+            if feature.name == 'Decision':
+                continue
             self.__features_clauses[feature] = []
-            for key in self.__fuzzy_sets:
-                self.__features_clauses[feature.name].append(Clause(feature, key, self.__fuzzy_sets[key]))
+            for key in self.__fuzzy_sets[feature.name]:
+                self.__features_clauses[feature.name].append(Clause(feature, key, self.__fuzzy_sets[feature.name][key]))
 
         fuzzy_dataset = pd.DataFrame(list([self.__dataset.columns]), dtype="string")
         fuzzy_dataset.columns = self.__dataset.columns

@@ -49,32 +49,19 @@ def main():
     df_scaled = min_max_scaler.fit_transform(df_ar)
     df = pd.DataFrame(df_scaled, columns=df.columns)
     df_y = df['Decision']
-    fuzzy_params = FuzzySetsParams(df)
-    mean_gausses = fuzzy_params.generate_t1_sets()
 
-    # define fuzzy sets and save into dict
-    gausses = generate_equal_gausses(3, 0, 1)
-    gausses = [inv_gaussian_left(.5, 0.21), gaussian(.5, 0.21), inv_gaussian_right(.5, 0.21)]
-    small = Type1FuzzySet(gausses[0])
-    medium = Type1FuzzySet(gausses[1])
-    large = Type1FuzzySet(gausses[2])
-    fuzzy_sets = {'small': small, 'medium': medium, 'large': large}
 
-    # define IT2FSs
-    gausses_LMF = [gaussian(.0, 0.20), gaussian(.5, 0.20), gaussian(1., 0.20)]
-    gausses_UMF = [gaussian(.0, 0.22), gaussian(.5, 0.22), gaussian(1., 0.22)]
 
-    small_T2 = IntervalType2FuzzySet(gausses_LMF[0], gausses_UMF[0])
-    medium_T2 = IntervalType2FuzzySet(gausses_LMF[1], gausses_UMF[1])
-    large_T2 = IntervalType2FuzzySet(gausses_LMF[2], gausses_UMF[2])
-    fuzzy_sets_T2 = {'small': small_T2, 'medium': medium_T2, 'large': large_T2}
+
+
 
     rules = []
     clauses = []
 
+
     decision = LinguisticVariable('Decision', Domain(0, 1, 10))
 
-    train, test = train_test_split(df, test_size=0.2)
+    train, test = train_test_split(df, stratify=df['Decision'], test_size=0.2)
     train_y = train['Decision']
     classify_func = classify(0)
 
@@ -89,8 +76,12 @@ def main():
         train_data_for_inference = train.iloc[train_index]
         train_y = train_data['Decision']
 
+        fuzzy_params = FuzzySetsParams(train)
+        mean_gausses_type1 = fuzzy_params.generate_t1_sets(["small", "medium", "large"], True)
+        mean_gausses_type2 = fuzzy_params.generate_t2_sets(["small", "medium", "large"], 0.02, True)
+
         # generate fuzzy decision table
-        gen = FuzzyDecisionTableGenerator(fuzzy_sets, train_data)
+        gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
         fuzzified_dataset = gen.fuzzify()
 
         # remove inconsistencies
@@ -104,18 +95,19 @@ def main():
         # induce rules from DT created with type-1 FSs,
         # IT2 fuzzy sets are passed to fill antecedents with object
         rb = RuleBuilder(decision_table_with_reduct)
-        antecedents, string_antecedents = rb.induce_rules(fuzzy_sets_T2)
+        antecedents, string_antecedents = rb.induce_rules(mean_gausses_type2)
 
         # define linguistic variables, get them from rule induction process
         ling_vars = list(rb.features)
 
         # define consequents and rules
-        parameters_1 = {ling_vars[0]: -1.5, ling_vars[1]: -2.0, ling_vars[2]: -3.5}
-        parameters_2 = {ling_vars[0]: 3.2, ling_vars[1]: 1.2, ling_vars[2]: 5.3}
+        parameters_1 = {ling_vars[0]: -1.5, ling_vars[1]: -2.0}
+        parameters_2 = {ling_vars[0]: 3.2, ling_vars[1]: 1.2}
         consequent_1 = TakagiSugenoConsequent(parameters_1, -1, decision)
         consequent_2 = TakagiSugenoConsequent(parameters_2, 1., decision)
 
-        rules = [Rule(antecedents[0.0], consequent_1), Rule(antecedents[1.0], consequent_2)]
+        if (0.0 in antecedents and 1.0 in antecedents):
+          rules = [Rule(antecedents[0.0], consequent_1), Rule(antecedents[1.0], consequent_2)]
 
         # use clauses generated in rule induction for fuzzyfing
         clauses = rb.clauses
@@ -126,8 +118,7 @@ def main():
         data.pop('index', None)
 
         measures = {ling_vars[0]: data['F0'],
-                    ling_vars[1]: data['F1'],
-                    ling_vars[2]: data['F2']}
+                    ling_vars[1]: data['F1']}
 
         fitness = lambda parameters: evaluate(parameters, rules, ling_vars, df_fuzzified,
                                               measures, decision, classify_func, train_y)
@@ -137,14 +128,14 @@ def main():
 
         #print('fitness')
         #fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
-        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=40, swarmsize=40)
+        """xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=40, swarmsize=40)
 
         if (1 - fopt) > best_fold_acc:
             print(f"New best fold params {best_params} with accuracy {1 - fopt}!")
             best_fold_params = xopt
-            best_fold_acc = 1 - fopt
+            best_fold_acc = 1 - fopt"""
 
-        #best_fold_params = [-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1]
+        best_fold_params = [1] * 6
         #validate on fold test data
         fold_test = train.iloc[test_index]
         fold_test_fuzzified = fuzzify(fold_test, clauses)
@@ -178,7 +169,7 @@ def main():
     for feature in list(test)[:-1]:
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
-    clauses, terms = return_clauses_and_terms(ling_variables, fuzzy_sets_T2)
+    clauses, terms = return_clauses_and_terms(ling_variables, mean_gausses_type2)
 
     # validate on final test data after all folds
     test_fuzzified = fuzzify(test, clauses)
@@ -196,13 +187,13 @@ def main():
 
 
 def evaluate(params, rules_f: List[Rule], ling_variables, dataset, measures, decision, classify_func, y):
-    f_params1 = {ling_variables[0]: params[0], ling_variables[1]: params[1], ling_variables[2]: params[2]}
-    f_params2 = {ling_variables[0]: params[3], ling_variables[1]: params[4], ling_variables[2]: params[5]}
+    f_params1 = {ling_variables[0]: params[0], ling_variables[1]: params[1]}
+    f_params2 = {ling_variables[0]: params[2], ling_variables[1]: params[3]}
     print(params)
     rules_f[0].consequent.function_parameters = f_params1
     rules_f[1].consequent.function_parameters = f_params2
-    rules_f[0].consequent.bias = params[6]
-    rules_f[1].consequent.bias = params[7]
+    rules_f[0].consequent.bias = params[4]
+    rules_f[1].consequent.bias = params[5]
     ts = TakagiSugenoInferenceSystem(rules_f)
     result_eval = ts.infer(takagi_sugeno_EIASC, dataset, measures)
     y_pred_eval = list(map(lambda x: classify_func(x), result_eval[decision]))

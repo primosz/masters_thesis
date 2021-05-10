@@ -22,8 +22,8 @@ class RuleBuilder:
     def induce_rules(self, fuzzy_sets):
         algebra = GodelAlgebra()
         for feature in self.__features:
-            for key in fuzzy_sets:
-                clause = Clause(feature, key, fuzzy_sets[key])
+            for key in fuzzy_sets[feature.name]:
+                clause = Clause(feature, key, fuzzy_sets[feature.name][key])
                 self.__terms[f"{feature.name}_{key}"] = Term(algebra, clause)
                 self.__clauses.append(clause)
         differences = self.get_differences(self.__dataset)
