@@ -4,8 +4,9 @@ from typing import List, Dict
 import pandas as pd
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, classification_report
 
+from FuzzySetsParams import FuzzySetsParams
 from doggos.algebras import LukasiewiczAlgebra, GodelAlgebra
 from doggos.fuzzy_sets import Type1FuzzySet, IntervalType2FuzzySet
 from doggos.induction import FuzzyDecisionTableGenerator
@@ -17,7 +18,8 @@ from doggos.inference.defuzzification_algorithms import takagi_sugeno_karnik_men
     takagi_sugeno_EIASC
 from doggos.knowledge import LinguisticVariable, Domain, Rule, fuzzify, Term, Clause
 from doggos.knowledge.consequents import TakagiSugenoConsequent
-from doggos.utils.membership_functions.membership_functions import generate_equal_gausses, gaussian
+from doggos.utils.membership_functions.membership_functions import generate_equal_gausses, gaussian, inv_gaussian_left,\
+    inv_gaussian_right
 import time
 from pyswarm import pso
 
@@ -47,10 +49,12 @@ def main():
     df_scaled = min_max_scaler.fit_transform(df_ar)
     df = pd.DataFrame(df_scaled, columns=df.columns)
     df_y = df['Decision']
+    fuzzy_params = FuzzySetsParams(df)
+    mean_gausses = fuzzy_params.generate_t1_sets()
 
     # define fuzzy sets and save into dict
     gausses = generate_equal_gausses(3, 0, 1)
-    gausses = [gaussian(.0, 0.21), gaussian(.5, 0.21), gaussian(1., 0.21)]
+    gausses = [inv_gaussian_left(.5, 0.21), gaussian(.5, 0.21), inv_gaussian_right(.5, 0.21)]
     small = Type1FuzzySet(gausses[0])
     medium = Type1FuzzySet(gausses[1])
     large = Type1FuzzySet(gausses[2])
@@ -187,7 +191,7 @@ def main():
         test_measures[lv] = data_test[lv.name]
 
     print('ACCURACY ON FINAL TEST:')
-    evaluate(best_params, [rule1, rule2], ling_variables, test_fuzzified, test_measures, decision, classify_func,
+    evaluate_final(best_params, [rule1, rule2], ling_variables, test_fuzzified, test_measures, decision, classify_func,
              test['Decision'])
 
 
@@ -208,6 +212,24 @@ def evaluate(params, rules_f: List[Rule], ling_variables, dataset, measures, dec
 
     print(f'Accuracy: {accuracy1:.5f}')
     return 1 - accuracy1
+
+def evaluate_final(params, rules_f: List[Rule], ling_variables, dataset, measures, decision, classify_func, y):
+    f_params1 = {ling_variables[0]: params[0], ling_variables[1]: params[1], ling_variables[2]: params[2]}
+    f_params2 = {ling_variables[0]: params[3], ling_variables[1]: params[4], ling_variables[2]: params[5]}
+    print(params)
+    rules_f[0].consequent.function_parameters = f_params1
+    rules_f[1].consequent.function_parameters = f_params2
+    rules_f[0].consequent.bias = params[6]
+    rules_f[1].consequent.bias = params[7]
+    ts = TakagiSugenoInferenceSystem(rules_f)
+    result_eval = ts.infer(takagi_sugeno_EIASC, dataset, measures)
+    y_pred_eval = list(map(lambda x: classify_func(x), result_eval[decision]))
+    # print(y_pred)
+    # print(df_y.values)
+    accuracy = accuracy_score(y.values, y_pred_eval)
+    print("Test report", classification_report(y.values, y_pred_eval))
+    print(f'Accuracy: {accuracy:.5f}')
+    return 1 - accuracy
 
 
 def return_clauses_and_terms(features, fuzzy_sets):

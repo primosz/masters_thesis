@@ -171,6 +171,7 @@ def linear(a: float, b: float, max_value: float = 1) -> Callable[[float], float]
 
     return output_mf
 
+
 def generate_equal_gausses(number_of_gausses: int, start: float, end: float):
     result = [None] * number_of_gausses
     domain = end - start
@@ -196,3 +197,23 @@ def get_sigma(mean_1, mean_2):
             break
 
     return np.float64(sigma_value)
+
+
+def inv_gaussian_left(end: float, sigma: float) -> Callable[[float], float]:
+    def output_mf(value: float) -> float:
+        if value < end:
+            return 1 - np.exp(-(((end - value) ** 2) / (2 * sigma ** 2)))
+        else:
+            return 0
+
+    return output_mf
+
+
+def inv_gaussian_right(start: float, sigma: float) -> Callable[[float], float]:
+    def output_mf(value: float) -> float:
+        if value > start:
+            return 1 - np.exp(-(((start - value) ** 2) / (2 * sigma ** 2)))
+        else:
+            return 0
+
+    return output_mf

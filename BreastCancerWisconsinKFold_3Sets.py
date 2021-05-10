@@ -4,7 +4,7 @@ from typing import List, Dict
 import pandas as pd
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, classification_report
 
 from doggos.algebras import LukasiewiczAlgebra, GodelAlgebra
 from doggos.fuzzy_sets import Type1FuzzySet, IntervalType2FuzzySet
@@ -197,7 +197,7 @@ def main():
         test_measures[lv] = data_test[lv.name]
 
     print('ACCURACY ON FINAL TEST:')
-    evaluate(best_params, [rule1, rule2], ling_variables, test_fuzzified, test_measures, decision, classify_func,
+    evaluate_final(best_params, [rule1, rule2], ling_variables, test_fuzzified, test_measures, decision, classify_func,
              test['Decision'])
 
 
@@ -223,6 +223,27 @@ def evaluate(params, rules_f: List[Rule], lv, dataset, measures, decision, class
     print(f'Accuracy: {accuracy1:.5f}')
     return 1 - accuracy1
 
+def evaluate_final(params, rules_f: List[Rule], lv, dataset, measures, decision, classify_func, y):
+    f_params1 = {lv[0]: params[0], lv[1]: params[1], lv[2]: params[2],
+                 lv[3]: params[3], lv[4]: params[4], lv[5]: params[5],
+                 lv[6]: params[6], lv[7]: params[7], lv[8]: params[8]}
+    f_params2 = {lv[0]: params[9], lv[1]: params[10], lv[2]: params[11],
+                 lv[3]: params[12], lv[4]: params[13], lv[5]: params[14],
+                 lv[6]: params[15], lv[7]: params[16], lv[8]: params[17]}
+    print(params)
+    rules_f[0].consequent.function_parameters = f_params1
+    rules_f[1].consequent.function_parameters = f_params2
+    rules_f[0].consequent.bias = params[18]
+    rules_f[1].consequent.bias = params[19]
+    ts = TakagiSugenoInferenceSystem(rules_f)
+    result_eval = ts.infer(takagi_sugeno_EIASC, dataset, measures)
+    y_pred_eval = list(map(lambda x: classify_func(x), result_eval[decision]))
+    # print(y_pred)
+    # print(df_y.values)
+    accuracy = accuracy_score(y.values, y_pred_eval)
+    print("Test report", classification_report(y.values, y_pred_eval))
+    print(f'Accuracy: {accuracy:.5f}')
+    return 1 - accuracy
 
 def return_clauses_and_terms(features, fuzzy_sets):
     algebra = GodelAlgebra()
