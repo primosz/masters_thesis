@@ -106,6 +106,9 @@ def EIASC(intervals: np.ndarray):
     a_l = np.sum(intervals[:, 0] * intervals[:, 2])
     b_l = b
     L = 0
+    rows, cols = intervals.shape
+    if rows<2:
+        return intervals[0,0]
     while True:
         d = intervals[L, 3] - intervals[L, 2]
         a_l += intervals[L, 0] * d

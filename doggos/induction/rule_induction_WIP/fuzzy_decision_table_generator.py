@@ -41,5 +41,6 @@ class FuzzyDecisionTableGenerator:
                 else:
                     fuzzy_dataset.at[i, f] = self.get_highest_membership(f, self.__dataset.at[i, f])
 
+        fuzzy_dataset.drop(index=fuzzy_dataset[fuzzy_dataset['Decision'] == 'Decision'].index, inplace=True)
         return fuzzy_dataset
 
