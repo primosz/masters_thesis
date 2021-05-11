@@ -76,8 +76,8 @@ def main():
         train_y = train_data['Decision']
 
         fuzzy_params = FuzzySetsParams(train_data)
-        mean_gausses_type1 = fuzzy_params.generate_3_t1_sets(["small", "medium", "large"])
-        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.05)
+        mean_gausses_type1 = fuzzy_params.generate_5_t1_sets(["small", "medium", "large"])
+        mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["small", "medium", "large"], 0.05)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
