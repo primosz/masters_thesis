@@ -178,7 +178,9 @@ def main():
     for feature in list(test)[:-1]:
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
-    clauses, terms = return_clauses_and_terms(ling_variables, mean_gausses_type2)
+    fuzzy_params = FuzzySetsParams(train)
+    train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.05, plot=True)
+    clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
 
     # validate on final test data after all folds
     test_fuzzified = fuzzify(test, clauses)
