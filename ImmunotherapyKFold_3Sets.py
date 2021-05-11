@@ -51,7 +51,6 @@ def main():
     df = pd.DataFrame(df_scaled, columns=df.columns)
     df_y = df['Decision']
 
-
     rules = []
     clauses = []
 
@@ -77,7 +76,7 @@ def main():
 
         fuzzy_params = FuzzySetsParams(train_data)
         mean_gausses_type1 = fuzzy_params.generate_3_t1_sets(["small", "medium", "large"])
-        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.05)
+        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.01)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
@@ -107,7 +106,7 @@ def main():
         consequent_1 = TakagiSugenoConsequent(parameters_1, -1, decision)
         consequent_2 = TakagiSugenoConsequent(parameters_2, 1., decision)
 
-        if not(0.0 in antecedents and 1.0 in antecedents):
+        if not (0.0 in antecedents and 1.0 in antecedents):
             print("no rules")
             continue
         rules = [Rule(antecedents[0.0], consequent_1), Rule(antecedents[1.0], consequent_2)]
@@ -134,18 +133,17 @@ def main():
         lb = [-200.] * 14
         ub = [200.] * 14
 
-        #print('fitness')
-        #fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
-        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=80, swarmsize=80)
+        # print('fitness')
+        # fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
+        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=50, swarmsize=80)
 
         if (1 - fopt) > best_fold_acc:
             print(f"New best fold params {best_params} with accuracy {1 - fopt}!")
             best_fold_params = xopt
             best_fold_acc = 1 - fopt
 
-
         #best_fold_params = [1] * 14
-        #validate on fold test data
+        # validate on fold test data
         fold_test = train.iloc[test_index]
         fold_test_fuzzified = fuzzify(fold_test, clauses)
 
@@ -167,9 +165,6 @@ def main():
             best_params = best_fold_params
             final_rules = copy.deepcopy(string_antecedents)
 
-
-
-
     # define measures
     data_test = test.reset_index().to_dict(orient='list')
     data_test.pop('index', None)
@@ -179,7 +174,7 @@ def main():
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
     fuzzy_params = FuzzySetsParams(train)
-    train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.05, plot=True)
+    train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.01, plot=True)
     clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
 
     # validate on final test data after all folds
@@ -188,13 +183,12 @@ def main():
     rule1 = Rule(eval(final_rules[0], terms), rules[0].consequent)
     rule2 = Rule(eval(final_rules[1], terms), rules[1].consequent)
 
-
     for lv in ling_variables:
         test_measures[lv] = data_test[lv.name]
 
     print('ACCURACY ON FINAL TEST:')
     evaluate_final(best_params, [rule1, rule2], ling_variables, test_fuzzified, test_measures, decision, classify_func,
-             test['Decision'])
+                   test['Decision'])
 
 
 def evaluate(params, rules_f: List[Rule], lv, dataset, measures, decision, classify_func, y):
@@ -238,6 +232,7 @@ def evaluate_final(params, rules_f: List[Rule], lv, dataset, measures, decision,
     print(f'Accuracy: {accuracy:.5f}')
     return 1 - accuracy
 
+
 def return_clauses_and_terms(features, fuzzy_sets):
     algebra = GodelAlgebra()
     terms = {}
@@ -248,6 +243,7 @@ def return_clauses_and_terms(features, fuzzy_sets):
             terms[f"{feature.name}_{key}"] = Term(algebra, clause)
             clauses.append(clause)
     return clauses, terms
+
 
 if __name__ == '__main__':
     main()

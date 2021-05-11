@@ -28,30 +28,12 @@ class TakagiSugenoInferenceSystem(InferenceSystem):
 
     Examples:
     --------------------------------------------
-    Creating simple mamdani inference system and infering decision
-    >>> consequent_1 = TakagiSugenoInferenceSystem(parameters_1, 0, consequent_linguistic_variable_1)
-    >>> first_rule = Rule(antecedent_1, consequent_1)
-    ^repeat for all rules
-    >>> rule_base = [first_rule, second_rule, third_rule]
-    >>> features: Dict[Clause, MembershipDegree] = fuzzifier.fuzzify(dataset)
-    >>> data = df_X.reset_index().to_dict(orient='list')
-    >>> data.pop('index', None)
-    >>> measures = {linguistic_variable_1: data['linguistic-variable-1'],
-    >>>     linguistic_variable_2: data['linguistic-variable-2'],
-    >>>     linguistic_variable_3: data['linguistic-variable-3'],
-    >>>     linguistic_variable_4: data['linguistic_variable_4']}
-    >>> takagi_sugeno = TakagiSugenoInferenceSystem(rule_base)
-    >>> defuzzifiaction_method = takagi_sugeno_karnik_mendel
-    >>> print(takagi_sugeno.infer(defuzzifiaction_method, features, measures))
-    {consequent_linguistic_variable_1: [0.5],
-    consequent_linguistic_variable_2: [0.25],
-    consequent_linguistic_variable_1: [0.3],
-    consequent_linguistic_variable_1: [0.71]}
+
     """
     def infer(self,
               defuzzification_method: Callable,
-              features: Dict[Clause, List[MembershipDegree]],
-              measures: Dict[LinguisticVariable, List[float]]) -> dict[LinguisticVariable, list]:
+              features,
+              measures):
         """
         Inferences output based on features of given object and measured values of them, using chosen method
 
