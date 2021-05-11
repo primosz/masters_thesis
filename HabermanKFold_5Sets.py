@@ -77,8 +77,8 @@ def main():
         train_y = train_data['Decision']
 
         fuzzy_params = FuzzySetsParams(train)
-        mean_gausses_type1 = fuzzy_params.generate_t1_sets(["small", "medium", "large"], True)
-        mean_gausses_type2 = fuzzy_params.generate_t2_sets(["small", "medium", "large"], 0.02, True)
+        mean_gausses_type1 = fuzzy_params.generate_t1_sets(["small", "medium", "large"])
+        mean_gausses_type2 = fuzzy_params.generate_t2_sets(["small", "medium", "large"], 0.02)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
@@ -128,14 +128,14 @@ def main():
 
         #print('fitness')
         #fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
-        """xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=40, swarmsize=40)
+        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=40, swarmsize=40)
 
         if (1 - fopt) > best_fold_acc:
             print(f"New best fold params {best_params} with accuracy {1 - fopt}!")
             best_fold_params = xopt
-            best_fold_acc = 1 - fopt"""
+            best_fold_acc = 1 - fopt
 
-        best_fold_params = [1] * 6
+        #best_fold_params = [1] * 6
         #validate on fold test data
         fold_test = train.iloc[test_index]
         fold_test_fuzzified = fuzzify(fold_test, clauses)
@@ -169,7 +169,9 @@ def main():
     for feature in list(test)[:-1]:
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
-    clauses, terms = return_clauses_and_terms(ling_variables, mean_gausses_type2)
+    fuzzy_params = FuzzySetsParams(train)
+    train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.02)
+    clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
 
     # validate on final test data after all folds
     test_fuzzified = fuzzify(test, clauses)

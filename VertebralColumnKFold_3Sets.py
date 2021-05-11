@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import accuracy_score, classification_report
 
+from FuzzySetsParams import FuzzySetsParams
 from doggos.algebras import LukasiewiczAlgebra, GodelAlgebra
 from doggos.fuzzy_sets import Type1FuzzySet, IntervalType2FuzzySet
 from doggos.induction import FuzzyDecisionTableGenerator
@@ -50,29 +51,13 @@ def main():
     df = pd.DataFrame(df_scaled, columns=df.columns)
     df_y = df['Decision']
 
-    # define fuzzy sets and save into dict
-    gausses = generate_equal_gausses(3, 0, 1)
-    gausses = [gaussian(.0, 0.21), gaussian(.5, 0.21), gaussian(1., 0.21)]
-    small = Type1FuzzySet(gausses[0])
-    medium = Type1FuzzySet(gausses[1])
-    large = Type1FuzzySet(gausses[2])
-    fuzzy_sets = {'small': small, 'medium': medium, 'large': large}
-
-    # define IT2FSs
-    gausses_LMF = [gaussian(.0, 0.20), gaussian(.5, 0.20), gaussian(1., 0.20)]
-    gausses_UMF = [gaussian(.0, 0.22), gaussian(.5, 0.22), gaussian(1., 0.22)]
-
-    small_T2 = IntervalType2FuzzySet(gausses_LMF[0], gausses_UMF[0])
-    medium_T2 = IntervalType2FuzzySet(gausses_LMF[1], gausses_UMF[1])
-    large_T2 = IntervalType2FuzzySet(gausses_LMF[2], gausses_UMF[2])
-    fuzzy_sets_T2 = {'small': small_T2, 'medium': medium_T2, 'large': large_T2}
 
     rules = []
     clauses = []
 
     decision = LinguisticVariable('Decision', Domain(0, 1, 10))
 
-    train, test = train_test_split(df, test_size=0.2)
+    train, test = train_test_split(df, stratify=df['Decision'], test_size=0.2)
     train_y = train['Decision']
     classify_func = classify(0)
 
@@ -87,8 +72,12 @@ def main():
         train_data_for_inference = train.iloc[train_index]
         train_y = train_data['Decision']
 
+        fuzzy_params = FuzzySetsParams(train_data)
+        mean_gausses_type1 = fuzzy_params.generate_3_t1_sets(["small", "medium", "large"])
+        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.01)
+
         # generate fuzzy decision table
-        gen = FuzzyDecisionTableGenerator(fuzzy_sets, train_data)
+        gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
         fuzzified_dataset = gen.fuzzify()
 
         # remove inconsistencies
@@ -102,7 +91,7 @@ def main():
         # induce rules from DT created with type-1 FSs,
         # IT2 fuzzy sets are passed to fill antecedents with object
         rb = RuleBuilder(decision_table_with_reduct)
-        antecedents, string_antecedents = rb.induce_rules(fuzzy_sets_T2)
+        antecedents, string_antecedents = rb.induce_rules(mean_gausses_type2)
 
         # define linguistic variables, get them from rule induction process
         ling_vars = list(rb.features)
@@ -182,7 +171,9 @@ def main():
     for feature in list(test)[:-1]:
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
-    clauses, terms = return_clauses_and_terms(ling_variables, fuzzy_sets_T2)
+    fuzzy_params = FuzzySetsParams(train)
+    train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.01)
+    clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
 
     # validate on final test data after all folds
     test_fuzzified = fuzzify(test, clauses)
