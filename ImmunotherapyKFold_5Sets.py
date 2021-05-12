@@ -77,7 +77,7 @@ def main():
 
         fuzzy_params = FuzzySetsParams(train_data)
         mean_gausses_type1 = fuzzy_params.generate_5_t1_sets(["vsmall", "small", "medium", "large", "vlarge"])
-        mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.01, plot=True)
+        mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.02)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
@@ -182,7 +182,7 @@ def main():
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
     fuzzy_params = FuzzySetsParams(train)
-    train_mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.01, plot=True)
+    train_mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.02)
     clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
 
     # validate on final test data after all folds

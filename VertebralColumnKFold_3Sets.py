@@ -44,7 +44,7 @@ def main():
     final_measures = {}
 
     # read dataset and normalize it
-    df = pd.read_csv('data\Vertebral.csv', sep=';')
+    df = pd.read_csv('data/Vertebral.csv', sep=';')
     df_ar = df.values
     min_max_scaler = MinMaxScaler()
     df_scaled = min_max_scaler.fit_transform(df_ar)
@@ -236,8 +236,8 @@ def return_clauses_and_terms(features, fuzzy_sets):
     terms = {}
     clauses = []
     for feature in features:
-        for key in fuzzy_sets:
-            clause = Clause(feature, key, fuzzy_sets[key])
+        for key in fuzzy_sets[feature.name]:
+            clause = Clause(feature, key, fuzzy_sets[feature.name][key])
             terms[f"{feature.name}_{key}"] = Term(algebra, clause)
             clauses.append(clause)
     return clauses, terms

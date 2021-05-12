@@ -18,7 +18,8 @@ from doggos.inference.defuzzification_algorithms import takagi_sugeno_karnik_men
     takagi_sugeno_EIASC
 from doggos.knowledge import LinguisticVariable, Domain, Rule, fuzzify, Term, Clause
 from doggos.knowledge.consequents import TakagiSugenoConsequent
-from doggos.utils.membership_functions.membership_functions import generate_equal_gausses, gaussian
+from doggos.utils.membership_functions.membership_functions import generate_equal_gausses, gaussian, inv_gaussian_left,\
+    inv_gaussian_right
 import time
 from pyswarm import pso
 
@@ -40,11 +41,9 @@ def main():
     best_accuracy = 0
     best_params = []
     final_rules = []
-    final_clauses = []
-    final_measures = {}
 
     # read dataset and normalize it
-    df = pd.read_csv('data/Breast Cancer Data.csv', sep=';')
+    df = pd.read_csv('data/Haberman.csv', sep=';')
     df_ar = df.values
     min_max_scaler = MinMaxScaler()
     df_scaled = min_max_scaler.fit_transform(df_ar)
@@ -52,8 +51,11 @@ def main():
     df_y = df['Decision']
 
 
+
+
     rules = []
     clauses = []
+
 
     decision = LinguisticVariable('Decision', Domain(0, 1, 10))
 
@@ -61,7 +63,7 @@ def main():
     train_y = train['Decision']
     classify_func = classify(0)
 
-    skf = StratifiedKFold(n_splits=2, shuffle=True, random_state=23)
+    skf = StratifiedKFold(n_splits=6, shuffle=True, random_state=23)
     fold = 0
     for train_index, test_index in skf.split(train, train_y):
         best_fold_params = []
@@ -72,9 +74,9 @@ def main():
         train_data_for_inference = train.iloc[train_index]
         train_y = train_data['Decision']
 
-        fuzzy_params = FuzzySetsParams(train_data)
+        fuzzy_params = FuzzySetsParams(train)
         mean_gausses_type1 = fuzzy_params.generate_3_t1_sets(["small", "medium", "large"])
-        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.01, plot=True)
+        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.01)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
@@ -95,19 +97,15 @@ def main():
 
         # define linguistic variables, get them from rule induction process
         ling_vars = list(rb.features)
-        if len(ling_vars) < 5:
-            print("continue")
-            continue
+
         # define consequents and rules
-        parameters_1 = {ling_vars[0]: -1.5, ling_vars[1]: -2.0, ling_vars[2]: -3.5, ling_vars[3]: -5.5, ling_vars[4]: -5.5}
-        parameters_2 = {ling_vars[0]: 3.2, ling_vars[1]: 1.2, ling_vars[2]: 5.3, ling_vars[3]: 2.4, ling_vars[4]: 5.5}
+        parameters_1 = {ling_vars[0]: -1.5, ling_vars[1]: -2.0}
+        parameters_2 = {ling_vars[0]: 3.2, ling_vars[1]: 1.2}
         consequent_1 = TakagiSugenoConsequent(parameters_1, -1, decision)
         consequent_2 = TakagiSugenoConsequent(parameters_2, 1., decision)
 
-        if not (0.0 in antecedents and 0.1 in antecedents):
-            print("no rules, continue")
-            continue
-        rules = [Rule(antecedents[0.0], consequent_1), Rule(antecedents[1.0], consequent_2)]
+        if (0.0 in antecedents and 1.0 in antecedents):
+          rules = [Rule(antecedents[0.0], consequent_1), Rule(antecedents[1.0], consequent_2)]
 
         # use clauses generated in rule induction for fuzzyfing
         clauses = rb.clauses
@@ -118,27 +116,24 @@ def main():
         data.pop('index', None)
 
         measures = {ling_vars[0]: data['F0'],
-                    ling_vars[1]: data['F1'],
-                    ling_vars[2]: data['F2'],
-                    ling_vars[3]: data['F3'],
-                    ling_vars[3]: data['F4']}
+                    ling_vars[1]: data['F1']}
 
         fitness = lambda parameters: evaluate(parameters, rules, ling_vars, df_fuzzified,
                                               measures, decision, classify_func, train_y)
 
-        lb = [-80.] * 12
-        ub = [80.] * 12
+        lb = [-200.] * 8
+        ub = [200.] * 8
 
         #print('fitness')
         #fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
-        """xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=60, swarmsize=60)
+        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=60, swarmsize=60)
 
         if (1 - fopt) > best_fold_acc:
             print(f"New best fold params {best_params} with accuracy {1 - fopt}!")
             best_fold_params = xopt
-            best_fold_acc = 1 - fopt"""
+            best_fold_acc = 1 - fopt
 
-        best_fold_params = [-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1]
+        #best_fold_params = [1] * 6
         #validate on fold test data
         fold_test = train.iloc[test_index]
         fold_test_fuzzified = fuzzify(fold_test, clauses)
@@ -191,16 +186,14 @@ def main():
              test['Decision'])
 
 
-def evaluate(params, rules_f: List[Rule], lv, dataset, measures, decision, classify_func, y):
-    f_params1 = {lv[0]: params[0], lv[1]: params[1], lv[2]: params[2],
-                 lv[3]: params[3], lv[4]: params[4]}
-    f_params2 = {lv[0]: params[5], lv[1]: params[6], lv[2]: params[7],
-                 lv[3]: params[8], lv[4]: params[9]}
+def evaluate(params, rules_f: List[Rule], ling_variables, dataset, measures, decision, classify_func, y):
+    f_params1 = {ling_variables[0]: params[0], ling_variables[1]: params[1]}
+    f_params2 = {ling_variables[0]: params[2], ling_variables[1]: params[3]}
     print(params)
     rules_f[0].consequent.function_parameters = f_params1
     rules_f[1].consequent.function_parameters = f_params2
-    rules_f[0].consequent.bias = params[10]
-    rules_f[1].consequent.bias = params[11]
+    rules_f[0].consequent.bias = params[4]
+    rules_f[1].consequent.bias = params[5]
     ts = TakagiSugenoInferenceSystem(rules_f)
     result_eval = ts.infer(takagi_sugeno_EIASC, dataset, measures)
     y_pred_eval = list(map(lambda x: classify_func(x), result_eval[decision]))
@@ -211,32 +204,32 @@ def evaluate(params, rules_f: List[Rule], lv, dataset, measures, decision, class
     print(f'Accuracy: {accuracy1:.5f}')
     return 1 - accuracy1
 
-def evaluate_final(params, rules_f: List[Rule], lv, dataset, measures, decision, classify_func, y):
-    f_params1 = {lv[0]: params[0], lv[1]: params[1], lv[2]: params[2],
-                 lv[3]: params[3], lv[4]: params[4]}
-    f_params2 = {lv[0]: params[5], lv[1]: params[6], lv[2]: params[7],
-                 lv[3]: params[8], lv[4]: params[9]}
+def evaluate_final(params, rules_f: List[Rule], ling_variables, dataset, measures, decision, classify_func, y):
+    f_params1 = {ling_variables[0]: params[0], ling_variables[1]: params[1], ling_variables[2]: params[2]}
+    f_params2 = {ling_variables[0]: params[3], ling_variables[1]: params[4], ling_variables[2]: params[5]}
     print(params)
     rules_f[0].consequent.function_parameters = f_params1
     rules_f[1].consequent.function_parameters = f_params2
-    rules_f[0].consequent.bias = params[10]
-    rules_f[1].consequent.bias = params[11]
+    rules_f[0].consequent.bias = params[6]
+    rules_f[1].consequent.bias = params[7]
     ts = TakagiSugenoInferenceSystem(rules_f)
     result_eval = ts.infer(takagi_sugeno_EIASC, dataset, measures)
     y_pred_eval = list(map(lambda x: classify_func(x), result_eval[decision]))
-
+    # print(y_pred)
+    # print(df_y.values)
     accuracy = accuracy_score(y.values, y_pred_eval)
     print("Test report", classification_report(y.values, y_pred_eval))
     print(f'Accuracy: {accuracy:.5f}')
     return 1 - accuracy
+
 
 def return_clauses_and_terms(features, fuzzy_sets):
     algebra = GodelAlgebra()
     terms = {}
     clauses = []
     for feature in features:
-        for key in fuzzy_sets:
-            clause = Clause(feature, key, fuzzy_sets[key])
+        for key in fuzzy_sets[feature.name]:
+            clause = Clause(feature, key, fuzzy_sets[feature.name][key])
             terms[f"{feature.name}_{key}"] = Term(algebra, clause)
             clauses.append(clause)
     return clauses, terms

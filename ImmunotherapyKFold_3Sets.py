@@ -76,7 +76,7 @@ def main():
 
         fuzzy_params = FuzzySetsParams(train_data)
         mean_gausses_type1 = fuzzy_params.generate_3_t1_sets(["small", "medium", "large"])
-        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.01)
+        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.03)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
@@ -130,8 +130,8 @@ def main():
         fitness = lambda parameters: evaluate(parameters, rules, ling_vars, df_fuzzified,
                                               measures, decision, classify_func, train_y)
 
-        lb = [-200.] * 14
-        ub = [200.] * 14
+        lb = [-300.] * 14
+        ub = [300.] * 14
 
         # print('fitness')
         # fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
@@ -171,7 +171,7 @@ def main():
     ling_variables = []
     test_measures = {}
     for feature in list(test)[:-1]:
-        ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
+        ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.003)))
 
     fuzzy_params = FuzzySetsParams(train)
     train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.01, plot=True)
@@ -196,7 +196,7 @@ def evaluate(params, rules_f: List[Rule], lv, dataset, measures, decision, class
                  lv[3]: params[3], lv[4]: params[4], lv[5]: params[5]}
     f_params2 = {lv[0]: params[6], lv[1]: params[7], lv[2]: params[8],
                  lv[3]: params[9], lv[4]: params[10], lv[5]: params[11]}
-    print(params)
+    #print(params)
     rules_f[0].consequent.function_parameters = f_params1
     rules_f[1].consequent.function_parameters = f_params2
     rules_f[0].consequent.bias = params[12]

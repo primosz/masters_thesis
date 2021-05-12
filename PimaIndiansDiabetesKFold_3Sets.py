@@ -44,7 +44,7 @@ def main():
     final_measures = {}
 
     # read dataset and normalize it
-    df = pd.read_csv('data\Pima Indians Diabetes.csv.csv', sep=';')
+    df = pd.read_csv('data/Pima Indians Diabetes.csv', sep=';')
     df_ar = df.values
     min_max_scaler = MinMaxScaler()
     df_scaled = min_max_scaler.fit_transform(df_ar)
@@ -61,7 +61,7 @@ def main():
     train_y = train['Decision']
     classify_func = classify(0)
 
-    skf = StratifiedKFold(n_splits=10, shuffle=True, random_state=23)
+    skf = StratifiedKFold(n_splits=4, shuffle=True, random_state=23)
     fold = 0
     for train_index, test_index in skf.split(train, train_y):
         best_fold_params = []
@@ -130,12 +130,12 @@ def main():
         fitness = lambda parameters: evaluate(parameters, rules, ling_vars, df_fuzzified,
                                               measures, decision, classify_func, train_y)
 
-        lb = [-80.] * 18
-        ub = [80.] * 18
+        lb = [-200.] * 18
+        ub = [200.] * 18
 
         #print('fitness')
         #fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
-        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=40, swarmsize=40)
+        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=20, swarmsize=30)
 
         if (1 - fopt) > best_fold_acc:
             print(f"New best fold params {best_params} with accuracy {1 - fopt}!")
@@ -245,8 +245,8 @@ def return_clauses_and_terms(features, fuzzy_sets):
     terms = {}
     clauses = []
     for feature in features:
-        for key in fuzzy_sets:
-            clause = Clause(feature, key, fuzzy_sets[key])
+        for key in fuzzy_sets[feature.name]:
+            clause = Clause(feature, key, fuzzy_sets[feature.name][key])
             terms[f"{feature.name}_{key}"] = Term(algebra, clause)
             clauses.append(clause)
     return clauses, terms

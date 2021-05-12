@@ -43,14 +43,12 @@ def main():
     final_rules = []
 
     # read dataset and normalize it
-    df = pd.read_csv('data\Haberman.csv', sep=';')
+    df = pd.read_csv('data/Haberman.csv', sep=';')
     df_ar = df.values
     min_max_scaler = MinMaxScaler()
     df_scaled = min_max_scaler.fit_transform(df_ar)
     df = pd.DataFrame(df_scaled, columns=df.columns)
     df_y = df['Decision']
-
-
 
 
 
@@ -77,8 +75,8 @@ def main():
         train_y = train_data['Decision']
 
         fuzzy_params = FuzzySetsParams(train)
-        mean_gausses_type1 = fuzzy_params.generate_t1_sets(["small", "medium", "large"])
-        mean_gausses_type2 = fuzzy_params.generate_t2_sets(["small", "medium", "large"], 0.02)
+        mean_gausses_type1 = fuzzy_params.generate_5_t1_sets(["vsmall", "small", "medium", "large", "vlarge"])
+        mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.01)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
@@ -123,12 +121,12 @@ def main():
         fitness = lambda parameters: evaluate(parameters, rules, ling_vars, df_fuzzified,
                                               measures, decision, classify_func, train_y)
 
-        lb = [-80.] * 8
-        ub = [80.] * 8
+        lb = [-200.] * 8
+        ub = [200.] * 8
 
         #print('fitness')
         #fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
-        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=40, swarmsize=40)
+        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=60, swarmsize=60)
 
         if (1 - fopt) > best_fold_acc:
             print(f"New best fold params {best_params} with accuracy {1 - fopt}!")
@@ -170,7 +168,7 @@ def main():
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
     fuzzy_params = FuzzySetsParams(train)
-    train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.02)
+    train_mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.01)
     clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
 
     # validate on final test data after all folds
@@ -230,8 +228,8 @@ def return_clauses_and_terms(features, fuzzy_sets):
     terms = {}
     clauses = []
     for feature in features:
-        for key in fuzzy_sets:
-            clause = Clause(feature, key, fuzzy_sets[key])
+        for key in fuzzy_sets[feature.name]:
+            clause = Clause(feature, key, fuzzy_sets[feature.name][key])
             terms[f"{feature.name}_{key}"] = Term(algebra, clause)
             clauses.append(clause)
     return clauses, terms
