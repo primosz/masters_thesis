@@ -73,8 +73,8 @@ def main():
         train_y = train_data['Decision']
 
         fuzzy_params = FuzzySetsParams(train_data)
-        mean_gausses_type1 = fuzzy_params.generate_3_t1_sets(["small", "medium", "large"])
-        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.03)
+        mean_gausses_type1 = fuzzy_params.generate_7_t1_sets(["vsmall", "small", "smedium", "medium", "lmedium", "large", "vlarge"])
+        mean_gausses_type2 = fuzzy_params.generate_7_t2_sets(["vsmall", "small", "smedium", "medium", "lmedium", "large", "vlarge"], 0.01)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
@@ -130,12 +130,12 @@ def main():
         fitness = lambda parameters: evaluate(parameters, rules, ling_vars, df_fuzzified,
                                               measures, decision, classify_func, train_y)
 
-        lb = [-200.] * 14
-        ub = [200.] * 14
+        lb = [-300.] * 14
+        ub = [300.] * 14
 
         #print('fitness')
         #fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
-        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=50, swarmsize=50)
+        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=30, swarmsize=30)
 
         if (1 - fopt) > best_fold_acc:
             print(f"New best fold params {best_params} with accuracy {1 - fopt}!")
@@ -165,6 +165,33 @@ def main():
             best_params = best_fold_params
             final_rules = copy.deepcopy(string_antecedents)
 
+        # define measures
+        data_test = test.reset_index().to_dict(orient='list')
+        data_test.pop('index', None)
+        ling_variables = []
+        test_measures = {}
+        for feature in list(test)[:-1]:
+            ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
+
+        fuzzy_params = FuzzySetsParams(train)
+        train_mean_gausses_type2 = fuzzy_params.generate_7_t2_sets(
+            ["vsmall", "small", "smedium", "medium", "lmedium", "large", "vlarge"], 0.01)
+        clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
+
+        # validate on final test data after all folds
+        test_fuzzified = fuzzify(test, clauses)
+
+        rule1 = Rule(eval(final_rules[0], terms), rules[0].consequent)
+        rule2 = Rule(eval(final_rules[1], terms), rules[1].consequent)
+
+        for lv in ling_variables:
+            test_measures[lv] = data_test[lv.name]
+
+        print('ACCURACY ON FINAL TEST:')
+        evaluate_final(best_fold_params, [rule1, rule2], ling_variables, test_fuzzified, test_measures, decision,
+                       classify_func,
+                       test['Decision'])
+
 
 
 
@@ -177,7 +204,7 @@ def main():
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
     fuzzy_params = FuzzySetsParams(train)
-    train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.03)
+    train_mean_gausses_type2 = fuzzy_params.generate_7_t2_sets(["vsmall", "small", "smedium", "medium", "lmedium", "large", "vlarge"], 0.03)
     clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
 
     # validate on final test data after all folds
@@ -200,7 +227,7 @@ def evaluate(params, rules_f: List[Rule], lv, dataset, measures, decision, class
                  lv[3]: params[3], lv[4]: params[4], lv[5]: params[5]}
     f_params2 = {lv[0]: params[6], lv[1]: params[7], lv[2]: params[8],
                  lv[3]: params[9], lv[4]: params[10], lv[5]: params[11]}
-    print(params)
+    #print(params)
     rules_f[0].consequent.function_parameters = f_params1
     rules_f[1].consequent.function_parameters = f_params2
     rules_f[0].consequent.bias = params[12]
@@ -212,7 +239,7 @@ def evaluate(params, rules_f: List[Rule], lv, dataset, measures, decision, class
     # print(df_y.values)
     accuracy1 = accuracy_score(y.values, y_pred_eval)
 
-    print(f'Accuracy: {accuracy1:.5f}')
+    #print(f'Accuracy: {accuracy1:.5f}')
     return 1 - accuracy1
 
 
@@ -232,7 +259,7 @@ def evaluate_final(params, rules_f: List[Rule], lv, dataset, measures, decision,
     # print(y_pred)
     # print(df_y.values)
     accuracy = accuracy_score(y.values, y_pred_eval)
-    print("Test report", classification_report(y.values, y_pred_eval))
+    print("Test report", classification_report(y.values, y_pred_eval, digits=3))
     print(f'Accuracy: {accuracy:.5f}')
     return 1 - accuracy
 

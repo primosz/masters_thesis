@@ -59,11 +59,11 @@ def main():
 
     decision = LinguisticVariable('Decision', Domain(0, 1, 10))
 
-    train, test = train_test_split(df, stratify=df['Decision'], test_size=0.2)
+    train, test = train_test_split(df, stratify=df['Decision'], test_size=0.1)
     train_y = train['Decision']
     classify_func = classify(0)
 
-    skf = StratifiedKFold(n_splits=6, shuffle=True, random_state=23)
+    skf = StratifiedKFold(n_splits=10, shuffle=True, random_state=23)
     fold = 0
     for train_index, test_index in skf.split(train, train_y):
         best_fold_params = []
@@ -76,7 +76,7 @@ def main():
 
         fuzzy_params = FuzzySetsParams(train)
         mean_gausses_type1 = fuzzy_params.generate_3_t1_sets(["small", "medium", "large"])
-        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.01)
+        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.03)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
@@ -94,7 +94,9 @@ def main():
         # IT2 fuzzy sets are passed to fill antecedents with object
         rb = RuleBuilder(decision_table_with_reduct)
         antecedents, string_antecedents = rb.induce_rules(mean_gausses_type2)
-
+        if not (1.0 in antecedents and 0.0 in antecedents):
+            print("continue")
+            continue
         # define linguistic variables, get them from rule induction process
         ling_vars = list(rb.features)
 
@@ -104,8 +106,8 @@ def main():
         consequent_1 = TakagiSugenoConsequent(parameters_1, -1, decision)
         consequent_2 = TakagiSugenoConsequent(parameters_2, 1., decision)
 
-        if (0.0 in antecedents and 1.0 in antecedents):
-          rules = [Rule(antecedents[0.0], consequent_1), Rule(antecedents[1.0], consequent_2)]
+
+        rules = [Rule(antecedents[0.0], consequent_1), Rule(antecedents[1.0], consequent_2)]
 
         # use clauses generated in rule induction for fuzzyfing
         clauses = rb.clauses
@@ -121,8 +123,8 @@ def main():
         fitness = lambda parameters: evaluate(parameters, rules, ling_vars, df_fuzzified,
                                               measures, decision, classify_func, train_y)
 
-        lb = [-200.] * 8
-        ub = [200.] * 8
+        lb = [-300.] * 8
+        ub = [300.] * 8
 
         #print('fitness')
         #fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
@@ -168,7 +170,7 @@ def main():
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
     fuzzy_params = FuzzySetsParams(train)
-    train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.01)
+    train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.03)
     clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
 
     # validate on final test data after all folds

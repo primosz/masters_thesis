@@ -44,7 +44,7 @@ def main():
     final_measures = {}
 
     # read dataset and normalize it
-    df = pd.read_csv('data/Vertebral.csv', sep=';')
+    df = pd.read_csv('data/Pima Indians Diabetes.csv', sep=';')
     df_ar = df.values
     min_max_scaler = MinMaxScaler()
     df_scaled = min_max_scaler.fit_transform(df_ar)
@@ -73,8 +73,8 @@ def main():
         train_y = train_data['Decision']
 
         fuzzy_params = FuzzySetsParams(train_data)
-        mean_gausses_type1 = fuzzy_params.generate_3_t1_sets(["small", "medium", "large"])
-        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.03)
+        mean_gausses_type1 = fuzzy_params.generate_5_t1_sets(["vsmall", "small", "medium", "large", "vlarge"])
+        mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.03)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
@@ -92,20 +92,22 @@ def main():
         # IT2 fuzzy sets are passed to fill antecedents with object
         rb = RuleBuilder(decision_table_with_reduct)
         antecedents, string_antecedents = rb.induce_rules(mean_gausses_type2)
-
         if not (1.0 in antecedents and 0.0 in antecedents):
             print("continue")
             continue
         # define linguistic variables, get them from rule induction process
         ling_vars = list(rb.features)
-        if len(ling_vars) < 6:
+        if len(ling_vars) < 8:
             print("continue")
             continue
         # define consequents and rules
         parameters_1 = {ling_vars[0]: -1.5, ling_vars[1]: -2.0, ling_vars[2]: -3.5,
-                        ling_vars[3]: -5.5, ling_vars[4]: -5.5, ling_vars[5]: -1.5}
+                        ling_vars[3]: -5.5, ling_vars[4]: -5.5, ling_vars[5]: -1.5,
+                        ling_vars[6]: -2.0, ling_vars[7]: -3.5}
         parameters_2 = {ling_vars[0]: 1.5, ling_vars[1]: 2.0, ling_vars[2]: 3.5,
-                        ling_vars[3]: 5.5, ling_vars[4]: 5.5, ling_vars[5]: 1.5}
+                        ling_vars[3]: 5.5, ling_vars[4]: 5.5, ling_vars[5]: 1.5,
+                        ling_vars[6]: 2.0, ling_vars[7]: 3.5}
+
         consequent_1 = TakagiSugenoConsequent(parameters_1, -1, decision)
         consequent_2 = TakagiSugenoConsequent(parameters_2, 1., decision)
 
@@ -124,18 +126,20 @@ def main():
                     ling_vars[2]: data['F2'],
                     ling_vars[3]: data['F3'],
                     ling_vars[4]: data['F4'],
-                    ling_vars[5]: data['F5']
+                    ling_vars[5]: data['F5'],
+                    ling_vars[6]: data['F6'],
+                    ling_vars[7]: data['F7']
                     }
 
         fitness = lambda parameters: evaluate(parameters, rules, ling_vars, df_fuzzified,
                                               measures, decision, classify_func, train_y)
 
-        lb = [-200.] * 14
-        ub = [200.] * 14
+        lb = [-300.] * 18
+        ub = [300.] * 18
 
         #print('fitness')
         #fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
-        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=50, swarmsize=50)
+        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=20, swarmsize=30)
 
         if (1 - fopt) > best_fold_acc:
             print(f"New best fold params {best_params} with accuracy {1 - fopt}!")
@@ -177,7 +181,7 @@ def main():
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
     fuzzy_params = FuzzySetsParams(train)
-    train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.03)
+    train_mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.03)
     clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
 
     # validate on final test data after all folds
@@ -197,14 +201,16 @@ def main():
 
 def evaluate(params, rules_f: List[Rule], lv, dataset, measures, decision, classify_func, y):
     f_params1 = {lv[0]: params[0], lv[1]: params[1], lv[2]: params[2],
-                 lv[3]: params[3], lv[4]: params[4], lv[5]: params[5]}
-    f_params2 = {lv[0]: params[6], lv[1]: params[7], lv[2]: params[8],
-                 lv[3]: params[9], lv[4]: params[10], lv[5]: params[11]}
-    print(params)
+                 lv[3]: params[3], lv[4]: params[4], lv[5]: params[5],
+                 lv[6]: params[6], lv[7]: params[7]}
+    f_params2 = {lv[0]: params[8], lv[1]: params[9], lv[2]: params[10],
+                 lv[3]: params[11], lv[4]: params[12], lv[5]: params[13],
+                 lv[6]: params[14], lv[7]: params[15]}
+    #print(params)
     rules_f[0].consequent.function_parameters = f_params1
     rules_f[1].consequent.function_parameters = f_params2
-    rules_f[0].consequent.bias = params[12]
-    rules_f[1].consequent.bias = params[13]
+    rules_f[0].consequent.bias = params[16]
+    rules_f[1].consequent.bias = params[17]
     ts = TakagiSugenoInferenceSystem(rules_f)
     result_eval = ts.infer(takagi_sugeno_EIASC, dataset, measures)
     y_pred_eval = list(map(lambda x: classify_func(x), result_eval[decision]))
@@ -218,14 +224,16 @@ def evaluate(params, rules_f: List[Rule], lv, dataset, measures, decision, class
 
 def evaluate_final(params, rules_f: List[Rule], lv, dataset, measures, decision, classify_func, y):
     f_params1 = {lv[0]: params[0], lv[1]: params[1], lv[2]: params[2],
-                 lv[3]: params[3], lv[4]: params[4], lv[5]: params[5]}
-    f_params2 = {lv[0]: params[6], lv[1]: params[7], lv[2]: params[8],
-                 lv[3]: params[9], lv[4]: params[10], lv[5]: params[11]}
+                 lv[3]: params[3], lv[4]: params[4], lv[5]: params[5],
+                 lv[6]: params[6], lv[7]: params[7]}
+    f_params2 = {lv[0]: params[8], lv[1]: params[9], lv[2]: params[10],
+                 lv[3]: params[11], lv[4]: params[12], lv[5]: params[13],
+                 lv[6]: params[14], lv[7]: params[15]}
     print(params)
     rules_f[0].consequent.function_parameters = f_params1
     rules_f[1].consequent.function_parameters = f_params2
-    rules_f[0].consequent.bias = params[12]
-    rules_f[1].consequent.bias = params[13]
+    rules_f[0].consequent.bias = params[16]
+    rules_f[1].consequent.bias = params[17]
     ts = TakagiSugenoInferenceSystem(rules_f)
     result_eval = ts.infer(takagi_sugeno_EIASC, dataset, measures)
     y_pred_eval = list(map(lambda x: classify_func(x), result_eval[decision]))

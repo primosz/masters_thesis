@@ -57,7 +57,7 @@ def main():
     train_y = train['Decision']
     classify_func = classify(0)
 
-    skf = StratifiedKFold(n_splits=10, shuffle=True, random_state=23)
+    skf = StratifiedKFold(n_splits=4, shuffle=True, random_state=23)
     fold = 0
     for train_index, test_index in skf.split(train, train_y):
         best_fold_params = []
@@ -70,7 +70,7 @@ def main():
 
         fuzzy_params = FuzzySetsParams(train_data)
         mean_gausses_type1 = fuzzy_params.generate_5_t1_sets(["vsmall", "small", "medium", "large", "vlarge"])
-        mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.02)
+        mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.01)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
@@ -121,7 +121,7 @@ def main():
 
         #print('fitness')
         #fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
-        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=60, swarmsize=80)
+        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=30, swarmsize=40)
 
         if (1 - fopt) > best_fold_acc:
             print(f"New best fold params {best_params} with accuracy {1 - fopt}!")
@@ -163,7 +163,7 @@ def main():
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
     fuzzy_params = FuzzySetsParams(train)
-    train_mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.02)
+    train_mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.01)
     clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
 
     # validate on final test data after all folds
@@ -216,7 +216,7 @@ def evaluate_final(params, rules_f: List[Rule], lv, dataset, measures, decision,
     # print(y_pred)
     # print(df_y.values)
     accuracy = accuracy_score(y.values, y_pred_eval)
-    print("Test report", classification_report(y.values, y_pred_eval))
+    print("Test report", classification_report(y.values, y_pred_eval, digits=3))
     print(f'Accuracy: {accuracy:.5f}')
     return 1 - accuracy
 

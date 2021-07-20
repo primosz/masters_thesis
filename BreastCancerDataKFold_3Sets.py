@@ -61,7 +61,7 @@ def main():
     train_y = train['Decision']
     classify_func = classify(0)
 
-    skf = StratifiedKFold(n_splits=2, shuffle=True, random_state=23)
+    skf = StratifiedKFold(n_splits=10, shuffle=True, random_state=23)
     fold = 0
     for train_index, test_index in skf.split(train, train_y):
         best_fold_params = []
@@ -73,8 +73,8 @@ def main():
         train_y = train_data['Decision']
 
         fuzzy_params = FuzzySetsParams(train_data)
-        mean_gausses_type1 = fuzzy_params.generate_3_t1_sets(["small", "medium", "large"])
-        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.01, plot=True)
+        mean_gausses_type1 = fuzzy_params.generate_3_t1_sets(["small", "medium", "large"], center=True)
+        mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.03, center=True)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
@@ -98,13 +98,14 @@ def main():
         if len(ling_vars) < 5:
             print("continue")
             continue
+
         # define consequents and rules
         parameters_1 = {ling_vars[0]: -1.5, ling_vars[1]: -2.0, ling_vars[2]: -3.5, ling_vars[3]: -5.5, ling_vars[4]: -5.5}
         parameters_2 = {ling_vars[0]: 3.2, ling_vars[1]: 1.2, ling_vars[2]: 5.3, ling_vars[3]: 2.4, ling_vars[4]: 5.5}
         consequent_1 = TakagiSugenoConsequent(parameters_1, -1, decision)
         consequent_2 = TakagiSugenoConsequent(parameters_2, 1., decision)
 
-        if not (0.0 in antecedents and 0.1 in antecedents):
+        if not (0.0 in antecedents and 1.0 in antecedents):
             print("no rules, continue")
             continue
         rules = [Rule(antecedents[0.0], consequent_1), Rule(antecedents[1.0], consequent_2)]
@@ -121,24 +122,24 @@ def main():
                     ling_vars[1]: data['F1'],
                     ling_vars[2]: data['F2'],
                     ling_vars[3]: data['F3'],
-                    ling_vars[3]: data['F4']}
+                    ling_vars[4]: data['F4']}
 
         fitness = lambda parameters: evaluate(parameters, rules, ling_vars, df_fuzzified,
                                               measures, decision, classify_func, train_y)
 
-        lb = [-80.] * 12
-        ub = [80.] * 12
+        lb = [-250.] * 12
+        ub = [250.] * 12
 
         #print('fitness')
         #fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
-        """xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=60, swarmsize=60)
+        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=60, swarmsize=60)
 
         if (1 - fopt) > best_fold_acc:
             print(f"New best fold params {best_params} with accuracy {1 - fopt}!")
             best_fold_params = xopt
-            best_fold_acc = 1 - fopt"""
+            best_fold_acc = 1 - fopt
 
-        best_fold_params = [-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1]
+        #best_fold_params = [1] * 12
         #validate on fold test data
         fold_test = train.iloc[test_index]
         fold_test_fuzzified = fuzzify(fold_test, clauses)
@@ -173,7 +174,7 @@ def main():
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
     fuzzy_params = FuzzySetsParams(train)
-    train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.01)
+    train_mean_gausses_type2 = fuzzy_params.generate_3_t2_sets(["small", "medium", "large"], 0.03, center=True)
     clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
 
     # validate on final test data after all folds
@@ -235,8 +236,8 @@ def return_clauses_and_terms(features, fuzzy_sets):
     terms = {}
     clauses = []
     for feature in features:
-        for key in fuzzy_sets:
-            clause = Clause(feature, key, fuzzy_sets[key])
+        for key in fuzzy_sets[feature.name]:
+            clause = Clause(feature, key, fuzzy_sets[feature.name][key])
             terms[f"{feature.name}_{key}"] = Term(algebra, clause)
             clauses.append(clause)
     return clauses, terms

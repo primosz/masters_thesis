@@ -221,7 +221,7 @@ class FuzzySetsParams:
                 self.__means[d] = 0.5
             mean = self.__means[d]
             if mean <= 0.5:
-                sigma = get_sigma(0, mean / 2)
+                sigma = get_sigma(0, mean / 3)
                 sets = [IntervalType2FuzzySet(inv_gaussian_left(mean/3, sigma + sigma_offset),
                                               inv_gaussian_left(mean/3, sigma - sigma_offset)),
                         IntervalType2FuzzySet(gaussian(mean/3, sigma - sigma_offset),
@@ -237,7 +237,7 @@ class FuzzySetsParams:
                         IntervalType2FuzzySet(inv_gaussian_right(5*mean/3, sigma + sigma_offset),
                                               inv_gaussian_right(5*mean/3, sigma - sigma_offset))]
             else:
-                sigma = get_sigma((1 + mean) / 2, mean)
+                sigma = get_sigma((1 + 2*mean)/3, mean)
                 sets = [IntervalType2FuzzySet(inv_gaussian_left(mean - (1-mean)*2/3, sigma + sigma_offset),
                                               inv_gaussian_left(mean - (1-mean)*2/3, sigma)),
                         IntervalType2FuzzySet(gaussian(mean - (1-mean)*2/3, sigma - sigma_offset),
@@ -266,7 +266,7 @@ class FuzzySetsParams:
                 lmedium_l = list(map(lambda x: sets[4].lower_membership_function(x), x1))
                 lmedium_u = list(map(lambda x: sets[4].upper_membership_function(x), x1))
                 large_l = list(map(lambda x: sets[5].lower_membership_function(x), x1))
-                large_u = list(map(lambda x: sets[6].upper_membership_function(x), x1))
+                large_u = list(map(lambda x: sets[5].upper_membership_function(x), x1))
                 vlarge_l = list(map(lambda x: sets[6].lower_membership_function(x), x1))
                 vlarge_u = list(map(lambda x: sets[6].upper_membership_function(x), x1))
                 plt.plot(x1, vsmall_l, 'r', x1, vsmall_u, 'b',

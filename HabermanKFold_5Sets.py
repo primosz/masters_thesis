@@ -59,7 +59,7 @@ def main():
 
     decision = LinguisticVariable('Decision', Domain(0, 1, 10))
 
-    train, test = train_test_split(df, stratify=df['Decision'], test_size=0.2)
+    train, test = train_test_split(df, stratify=df['Decision'], test_size=0.3)
     train_y = train['Decision']
     classify_func = classify(0)
 
@@ -76,7 +76,7 @@ def main():
 
         fuzzy_params = FuzzySetsParams(train)
         mean_gausses_type1 = fuzzy_params.generate_5_t1_sets(["vsmall", "small", "medium", "large", "vlarge"])
-        mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.01)
+        mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.03)
 
         # generate fuzzy decision table
         gen = FuzzyDecisionTableGenerator(mean_gausses_type1, train_data)
@@ -126,7 +126,7 @@ def main():
 
         #print('fitness')
         #fitness([-1.5, -2., -3.5, -5.5, 3.2, 1.2, 5.3, 2.4, -1, 1])
-        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=60, swarmsize=60)
+        xopt, fopt = pso(fitness, lb, ub, debug=True, maxiter=30, swarmsize=30)
 
         if (1 - fopt) > best_fold_acc:
             print(f"New best fold params {best_params} with accuracy {1 - fopt}!")
@@ -146,7 +146,7 @@ def main():
                 fold_test_data[feature]
 
         print(f"Testing fold {fold} after PSO algorithm:")
-        fold_test_result = evaluate(best_fold_params, rules, list(fold_test_measures.keys()), fold_test_fuzzified,
+        fold_test_result = evaluate_final(best_fold_params, rules, list(fold_test_measures.keys()), fold_test_fuzzified,
                                     fold_test_measures,
                                     decision, classify_func, fold_test['Decision'])
 
@@ -168,7 +168,7 @@ def main():
         ling_variables.append(LinguisticVariable(str(feature), Domain(0, 1.001, 0.001)))
 
     fuzzy_params = FuzzySetsParams(train)
-    train_mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.01)
+    train_mean_gausses_type2 = fuzzy_params.generate_5_t2_sets(["vsmall", "small", "medium", "large", "vlarge"], 0.03)
     clauses, terms = return_clauses_and_terms(ling_variables, train_mean_gausses_type2)
 
     # validate on final test data after all folds
